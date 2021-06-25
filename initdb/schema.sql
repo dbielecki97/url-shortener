@@ -1,4 +1,4 @@
-create table urls
+create table if not exists urls
 (
     code       varchar not null
         constraint urls_pk
@@ -8,8 +8,9 @@ create table urls
 );
 
 alter table urls
-    owner to postresuser;
+    owner to postgresuser;
 
-create unique index urls_code_uindex
+create
+unique index urls_code_uindex
     on urls (code);
 
