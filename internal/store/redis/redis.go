@@ -47,7 +47,7 @@ func (r Redis) Save(entry *domain.ShortURL) (*domain.ShortURL, *errs.AppError) {
 		return nil, errs.NewUnexpectedError("unexpected error")
 	}
 
-	result := r.db.Set(entry.Code, bytes, time.Hour*24)
+	result := r.db.Set(entry.Code, bytes, time.Minute*2)
 	if result.Err() != nil {
 		r.log.Errorf("Could not save ShortURL to cache: %v", result.Err())
 		return nil, errs.NewUnexpectedError("unexpected database error")

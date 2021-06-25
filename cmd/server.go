@@ -18,9 +18,9 @@ func main() {
 
 	sanityCheck(l)
 
-	r, rClose := postgresql.New(l)
+	p, rClose := postgresql.New(l)
 	defer rClose()
-	p, pClose := redis.New(l)
+	r, pClose := redis.New(l)
 	defer pClose()
 	ser := app.NewDefaultService(r, p)
 	s := app.NewServer(l, ser)
