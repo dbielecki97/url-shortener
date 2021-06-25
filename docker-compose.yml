@@ -12,6 +12,7 @@ services:
       POSTGRES_DB: url-shortener
     volumes:
       - /var/lib/postgresql
+      - ./initdb:/docker-entrypoint-initdb.d
     ports:
       - 5432:5432
     networks:
