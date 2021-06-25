@@ -1,0 +1,40 @@
+version: "3.3"  # optional since v1.27.0
+networks:
+  shortener_net:
+services:
+  store:
+    container_name: store
+    image: postgres
+    restart: "no"
+    environment:
+      POSTGRES_PASSWORD: postgrespass
+      POSTGRES_USER: postgresuser
+      POSTGRES_DB: url-shortener
+    volumes:
+      - /var/lib/postgresql
+    ports:
+      - 5432:5432
+    networks:
+      - shortener_net
+  cache:
+    container_name: cache
+    image: redis:alpine
+    restart: "no"
+    ports:
+      - 6379:6379
+    networks:
+      - shortener_net
+  shortener:
+    container_name: shortener
+    build: .
+    restart: always
+    depends_on:
+      - store
+      - cache
+    ports:
+      - 8000:8000
+    networks:
+      - shortener_net
+    environment:
+      REDIS_HOST: cache
+      POSTGRES_HOST: store
