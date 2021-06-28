@@ -22,7 +22,7 @@ func main() {
 	defer rClose()
 	r, pClose := redis.New(l)
 	defer pClose()
-	ser := app.NewDefaultService(r, p)
+	ser := app.NewDefaultService(r, p, l, app.DefaultShortener{})
 	s := app.NewServer(l, ser)
 
 	srv := &http.Server{

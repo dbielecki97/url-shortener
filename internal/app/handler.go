@@ -15,14 +15,6 @@ func (s *Server) handleUrlShorten(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appErr := req.Validate()
-	if appErr != nil {
-		s.writeResponse(w, r, appErr.Code, appErr.AsMessage())
-		return
-	}
-
-	req.Sanitize()
-
 	response, appErr := s.service.Shorten(req)
 	if appErr != nil {
 		s.writeResponse(w, r, appErr.Code, appErr.AsMessage())

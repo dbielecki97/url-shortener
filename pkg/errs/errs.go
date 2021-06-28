@@ -34,9 +34,9 @@ func NewNotFoundError(message string) *AppError {
 
 const CacheMiss int = 999
 
-func NewCacheMissError(message string) *AppError {
+func NewCacheMissError() *AppError {
 	return &AppError{
 		Code:    CacheMiss,
-		Message: message,
+		Message: "",
 	}
 }

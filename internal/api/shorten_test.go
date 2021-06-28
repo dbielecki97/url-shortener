@@ -6,45 +6,6 @@ import (
 	"testing"
 )
 
-func TestShortenRequest_Sanitize(t *testing.T) {
-	type fields struct {
-		URL string
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   string
-	}{
-		{
-			name:   "URL path without https",
-			fields: fields{URL: "www.google.com"},
-			want:   "https://www.google.com",
-		},
-		{
-			name:   "URL path with https",
-			fields: fields{URL: "https://www.google.com"},
-			want:   "https://www.google.com",
-		},
-		{
-			name:   "URL path with http",
-			fields: fields{URL: "http://www.google.com"},
-			want:   "http://www.google.com",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &ShortenRequest{
-				URL: tt.fields.URL,
-			}
-			r.Sanitize()
-
-			if r.URL != tt.want {
-				t.Errorf("Sanitized url = %v, got %v", r.URL, tt.want)
-			}
-		})
-	}
-}
-
 func TestShortenRequest_Validate(t *testing.T) {
 	type fields struct {
 		URL string
@@ -60,7 +21,12 @@ func TestShortenRequest_Validate(t *testing.T) {
 			want:   nil,
 		},
 		{
-			name:   "Proper URL path with https",
+			name:   "Proper URL path with only https",
+			fields: fields{URL: "https://"},
+			want:   nil,
+		},
+		{
+			name:   "Proper URL path with only https",
 			fields: fields{URL: ""},
 			want:   errs.NewValidationError("url can't be empty"),
 		},
@@ -77,6 +43,11 @@ func TestShortenRequest_Validate(t *testing.T) {
 		{
 			name:   "random sentence as url",
 			fields: fields{URL: "not a url at all"},
+			want:   errs.NewValidationError("not a valid url"),
+		},
+		{
+			name:   "valid url without scheme",
+			fields: fields{URL: "www.google.com"},
 			want:   errs.NewValidationError("not a valid url"),
 		},
 	}

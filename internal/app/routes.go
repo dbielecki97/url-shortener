@@ -1,7 +1,6 @@
 package app
 
 import (
-	"github.com/dbielecki97/url-shortener/internal/api"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -18,5 +17,11 @@ func (s *Server) routes() {
 }
 
 func (s *Server) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
-	s.writeResponse(w, r, http.StatusOK, api.HealthCheckResponse{Message: "OK"})
+	s.writeResponse(
+		w,
+		r,
+		http.StatusOK,
+		struct {
+			Message string `json:"message,omitempty"`
+		}{Message: "OK"})
 }

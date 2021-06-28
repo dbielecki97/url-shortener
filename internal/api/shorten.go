@@ -3,7 +3,6 @@ package api
 import (
 	"github.com/dbielecki97/url-shortener/pkg/errs"
 	"net/url"
-	"strings"
 )
 
 type ShortenRequest struct {
@@ -23,13 +22,7 @@ func (r ShortenRequest) Validate() *errs.AppError {
 	return nil
 }
 
-func (r *ShortenRequest) Sanitize() {
-	if !strings.HasPrefix(r.URL, "http") {
-		r.URL = "https://" + r.URL
-	}
-}
-
-type ShortenResponse struct {
+type ShortenInfo struct {
 	Code      string `json:"code,omitempty"`
 	URL       string `json:"url,omitempty"`
 	CreatedAt string `json:"created_at,omitempty"`

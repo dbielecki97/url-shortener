@@ -4,31 +4,35 @@ import (
 	"github.com/dbielecki97/url-shortener/internal/api"
 	"github.com/dbielecki97/url-shortener/internal/domain"
 	"github.com/dbielecki97/url-shortener/pkg/errs"
-	"time"
+	"github.com/sirupsen/logrus"
 )
 
+//go:generate mockgen -destination=../../mocks/app/mockService.go -package=app github.com/dbielecki97/url-shortener/internal/app Service
 type Service interface {
-	Shorten(api.ShortenRequest) (*api.ShortenResponse, *errs.AppError)
-	Expand(code string) (*api.ExpandResponse, *errs.AppError)
+	Shorten(api.ShortenRequest) (*api.ShortenInfo, *errs.AppError)
+	Expand(code string) (*api.ShortenInfo, *errs.AppError)
 }
 
 type DefaultService struct {
-	cache domain.ShortUrlRepo
-	store domain.ShortUrlRepo
+	cache     domain.ShortUrlRepo
+	store     domain.ShortUrlRepo
+	shortener Shortener
+	log       *logrus.Logger
 }
 
-func NewDefaultService(cache domain.ShortUrlRepo, store domain.ShortUrlRepo) *DefaultService {
-	return &DefaultService{cache: cache, store: store}
+func NewDefaultService(c domain.ShortUrlRepo, s domain.ShortUrlRepo, log *logrus.Logger, st Shortener) *DefaultService {
+	return &DefaultService{cache: c, store: s, log: log, shortener: st}
 }
 
-func (d DefaultService) Shorten(r api.ShortenRequest) (*api.ShortenResponse, *errs.AppError) {
-	entry := &domain.ShortURL{
-		URL:       r.URL,
-		Code:      domain.RandomCode(),
-		CreatedAt: time.Now().Format(time.RFC3339),
+func (d DefaultService) Shorten(r api.ShortenRequest) (*api.ShortenInfo, *errs.AppError) {
+	err := r.Validate()
+	if err != nil {
+		return nil, err
 	}
 
-	entry, err := d.cache.Save(entry)
+	entry := d.shortener.ShortenUrl(r.URL)
+
+	entry, err = d.cache.Save(entry)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +42,7 @@ func (d DefaultService) Shorten(r api.ShortenRequest) (*api.ShortenResponse, *er
 		return nil, err
 	}
 
-	res := api.ShortenResponse{
+	res := api.ShortenInfo{
 		Code:      entry.Code,
 		URL:       entry.URL,
 		CreatedAt: entry.CreatedAt,
@@ -47,10 +51,10 @@ func (d DefaultService) Shorten(r api.ShortenRequest) (*api.ShortenResponse, *er
 	return &res, nil
 }
 
-func (d DefaultService) Expand(code string) (*api.ExpandResponse, *errs.AppError) {
+func (d DefaultService) Expand(code string) (*api.ShortenInfo, *errs.AppError) {
 	e, err := d.cache.Find(code)
 	if err == nil {
-		res := api.ExpandResponse{
+		res := api.ShortenInfo{
 			Code:      e.Code,
 			URL:       e.URL,
 			CreatedAt: e.CreatedAt,
@@ -67,9 +71,12 @@ func (d DefaultService) Expand(code string) (*api.ExpandResponse, *errs.AppError
 		return nil, err
 	}
 
-	e, _ = d.cache.Save(e)
+	_, err = d.cache.Save(e)
+	if err != nil {
+		d.log.Errorf("Could not save to cache after reading from store: %v", err)
+	}
 
-	res := api.ExpandResponse{
+	res := api.ShortenInfo{
 		Code:      e.Code,
 		URL:       e.URL,
 		CreatedAt: e.CreatedAt,

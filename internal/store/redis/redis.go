@@ -61,7 +61,7 @@ func (r Redis) Find(code string) (*domain.ShortURL, *errs.AppError) {
 	if result.Err() != nil {
 		if result.Err() == redis.Nil {
 			r.log.Warnf("Could not find ShortURL with key %v in the cache", code)
-			return nil, errs.NewCacheMissError("could not found ShortURL in cache with provided code")
+			return nil, errs.NewCacheMissError()
 		}
 	}
 

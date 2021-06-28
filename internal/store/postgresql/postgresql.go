@@ -47,7 +47,7 @@ func New(log *logrus.Logger) (*Postgresql, func()) {
 func (p Postgresql) Save(entry *domain.ShortURL) (*domain.ShortURL, *errs.AppError) {
 	sqlInsert := "INSERT into urls (code, url, created_at) values ($1,$2,$3)"
 
-	_, err := p.db.Exec(sqlInsert, entry.Code, entry.URL, entry.CreatedAt)
+	_, err := p.db.Exec(sqlInsert, entry, entry.URL, entry.CreatedAt)
 	if err != nil {
 		p.log.Errorf("Could not save ShortURL to store: %v", err)
 		return nil, errs.NewUnexpectedError("unexpected database error")
