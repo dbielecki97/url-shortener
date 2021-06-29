@@ -8,7 +8,6 @@ import (
 	reflect "reflect"
 
 	api "github.com/dbielecki97/url-shortener/internal/api"
-	errs "github.com/dbielecki97/url-shortener/pkg/errs"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -36,11 +35,11 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 }
 
 // Expand mocks base method.
-func (m *MockService) Expand(arg0 string) (*api.ShortenInfo, *errs.AppError) {
+func (m *MockService) Expand(arg0 string) (*api.ShortenInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Expand", arg0)
 	ret0, _ := ret[0].(*api.ShortenInfo)
-	ret1, _ := ret[1].(*errs.AppError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -51,11 +50,11 @@ func (mr *MockServiceMockRecorder) Expand(arg0 interface{}) *gomock.Call {
 }
 
 // Shorten mocks base method.
-func (m *MockService) Shorten(arg0 api.ShortenRequest) (*api.ShortenInfo, *errs.AppError) {
+func (m *MockService) Shorten(arg0 api.ShortenRequest) (*api.ShortenInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Shorten", arg0)
 	ret0, _ := ret[0].(*api.ShortenInfo)
-	ret1, _ := ret[1].(*errs.AppError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 

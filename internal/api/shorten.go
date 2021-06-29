@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/dbielecki97/url-shortener/pkg/errs"
+	"github.com/pkg/errors"
 	"net/url"
 )
 
@@ -9,14 +9,30 @@ type ShortenRequest struct {
 	URL string `json:"url,omitempty"`
 }
 
-func (r ShortenRequest) Validate() *errs.AppError {
+type Validator interface {
+	HasError() bool
+}
+
+type validationError struct {
+	err error
+}
+
+func (v validationError) HasError() bool {
+	return true
+}
+
+func (v validationError) Error() string {
+	return v.err.Error()
+}
+
+func (r ShortenRequest) Validate() error {
 	if r.URL == "" {
-		return errs.NewValidationError("url can't be empty")
+		return validationError{err: errors.New("url can't be empty")}
 	}
 
 	_, err := url.ParseRequestURI(r.URL)
 	if err != nil {
-		return errs.NewValidationError("not a valid url")
+		return validationError{err: errors.New("not a valid url")}
 	}
 
 	return nil

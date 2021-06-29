@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/dbielecki97/url-shortener/internal/domain"
-	"github.com/dbielecki97/url-shortener/pkg/errs"
 	"github.com/go-redis/redis"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"os"
 	"strings"
@@ -40,42 +40,37 @@ func New(log *logrus.Logger) (*Redis, func()) {
 	return &Redis{db: db, log: log}, closeFn
 }
 
-func (r Redis) Save(entry *domain.ShortURL) (*domain.ShortURL, *errs.AppError) {
+func (r Redis) Save(entry *domain.ShortURL) (*domain.ShortURL, error) {
 	bytes, err := json.Marshal(&entry)
 	if err != nil {
-		r.log.Errorf("Could not marshal ShortURL: %v", err)
-		return nil, errs.NewUnexpectedError("unexpected error")
+		return nil, errors.Errorf("unexpected error: %v", err)
 	}
 
 	result := r.db.Set(entry.Code, bytes, time.Minute*2)
 	if result.Err() != nil {
-		r.log.Errorf("Could not save ShortURL to cache: %v", result.Err())
-		return nil, errs.NewUnexpectedError("unexpected database error")
+		return nil, errors.Errorf("unexpected database error: %v", result.Err())
 	}
 
 	return entry, nil
 }
 
-func (r Redis) Find(code string) (*domain.ShortURL, *errs.AppError) {
+func (r Redis) Find(code string) (*domain.ShortURL, error) {
 	result := r.db.Get(code)
 	if result.Err() != nil {
 		if result.Err() == redis.Nil {
-			r.log.Warnf("Could not find ShortURL with key %v in the cache", code)
-			return nil, errs.NewCacheMissError()
+			return nil, domain.NotFoundError{Err: errors.New("could not find entity in the cache")}
 		}
 	}
 
 	jsonString, err := result.Result()
 	if err != nil {
-		r.log.Infof("Could not get result: %v", err)
-		return nil, errs.NewUnexpectedError("unexpected error while getting result")
+		return nil, errors.Errorf("unexpected database error: %v", err)
 	}
 
 	var entry domain.ShortURL
 	err = json.NewDecoder(strings.NewReader(jsonString)).Decode(&entry)
 	if err != nil {
-		r.log.Infof("Could not decode ShortURL: %v", err)
-		return nil, errs.NewUnexpectedError("unexpected error")
+		return nil, errors.Errorf("unexpected error: %v", err)
 	}
 
 	return &entry, nil

@@ -1,8 +1,7 @@
 package api
 
 import (
-	"github.com/dbielecki97/url-shortener/pkg/errs"
-	"reflect"
+	"github.com/pkg/errors"
 	"testing"
 )
 
@@ -13,7 +12,7 @@ func TestShortenRequest_Validate(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
-		want   *errs.AppError
+		want   error
 	}{
 		{
 			name:   "Proper URL path with https",
@@ -28,7 +27,7 @@ func TestShortenRequest_Validate(t *testing.T) {
 		{
 			name:   "Proper URL path with only https",
 			fields: fields{URL: ""},
-			want:   errs.NewValidationError("url can't be empty"),
+			want:   validationError{err: errors.New("url can't be empty")},
 		},
 		{
 			name:   "Proper URL path with http",
@@ -38,17 +37,17 @@ func TestShortenRequest_Validate(t *testing.T) {
 		{
 			name:   "missing .com",
 			fields: fields{URL: "www.google"},
-			want:   errs.NewValidationError("not a valid url"),
+			want:   errors.New("not a valid url"),
 		},
 		{
 			name:   "random sentence as url",
 			fields: fields{URL: "not a url at all"},
-			want:   errs.NewValidationError("not a valid url"),
+			want:   errors.New("not a valid url"),
 		},
 		{
 			name:   "valid url without scheme",
 			fields: fields{URL: "www.google.com"},
-			want:   errs.NewValidationError("not a valid url"),
+			want:   errors.New("not a valid url"),
 		},
 	}
 	for _, tt := range tests {
@@ -56,9 +55,15 @@ func TestShortenRequest_Validate(t *testing.T) {
 			r := ShortenRequest{
 				URL: tt.fields.URL,
 			}
-			if got := r.Validate(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Validate() = %v, want %v", got, tt.want)
+			got := r.Validate()
+			if got == nil {
+				if tt.want != got {
+					t.Errorf("Validate() = %+v, want %+v", got, tt.want)
+				}
+			} else if got.Error() != tt.want.Error() {
+				t.Errorf("Validate() = %+v, want %+v", got, tt.want)
 			}
+
 		})
 	}
 }

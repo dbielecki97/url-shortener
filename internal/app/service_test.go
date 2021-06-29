@@ -4,10 +4,9 @@ import (
 	"github.com/dbielecki97/url-shortener/internal/api"
 	realDomain "github.com/dbielecki97/url-shortener/internal/domain"
 	"github.com/dbielecki97/url-shortener/mocks/domain"
-	"github.com/dbielecki97/url-shortener/pkg/errs"
 	"github.com/golang/mock/gomock"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"net/http"
 	"testing"
 )
 
@@ -46,9 +45,9 @@ func Test_Shorten_should_receive_error_from_validate_method_invalid_url(t *testi
 
 	request := api.ShortenRequest{URL: "invalid url"}
 
-	_, appError := service.Shorten(request)
+	_, err := service.Shorten(request)
 
-	if appError == nil {
+	if err != nil && err.Error() == "validation failed: invalid url" {
 		t.Error("failed while testing the new account validation")
 	}
 }
@@ -59,9 +58,9 @@ func Test_Shorten_should_receive_error_from_validate_method_not_schema(t *testin
 
 	request := api.ShortenRequest{URL: "www.google.com"}
 
-	_, appError := service.Shorten(request)
+	_, err := service.Shorten(request)
 
-	if appError.Message != "not a valid url" {
+	if err != nil && err.Error() != "validation failed: not a valid url" {
 		t.Error("failed while testing the new account validation")
 	}
 }
@@ -72,9 +71,9 @@ func Test_Shorten_should_receive_error_from_validate_method_empty_url(t *testing
 
 	request := api.ShortenRequest{URL: ""}
 
-	_, appError := service.Shorten(request)
+	_, err := service.Shorten(request)
 
-	if appError.Message != "url can't be empty" {
+	if err != nil && err.Error() != "validation failed: url can't be empty" {
 		t.Error("failed while testing the new account validation")
 	}
 }
@@ -91,10 +90,10 @@ func Test_Shorten_should_receive_error_from_repository_when_cache_can_not_save_s
 		CreatedAt: "2006-01-02T15:04:05Z07:00",
 	}
 
-	mockCacheRepo.EXPECT().Save(&a).Return(nil, errs.NewUnexpectedError("unexpected database error"))
-	_, appError := service.Shorten(req)
+	mockCacheRepo.EXPECT().Save(&a).Return(nil, errors.New("unexpected database error"))
+	_, err := service.Shorten(req)
 
-	if appError.Message != "unexpected database error" {
+	if err != nil && err.Error() != "could not save to cache: unexpected database error" {
 		t.Error("Test failed while testing for unexpected errors")
 	}
 }
@@ -112,11 +111,11 @@ func Test_Shorten_should_receive_error_from_repository_when_store_can_not_save_s
 	}
 
 	mockCacheRepo.EXPECT().Save(&a).Return(&a, nil)
-	mockStoreRepo.EXPECT().Save(&a).Return(nil, errs.NewUnexpectedError("unexpected database error"))
+	mockStoreRepo.EXPECT().Save(&a).Return(nil, errors.New("unexpected database error"))
 
-	_, appError := service.Shorten(req)
+	_, err := service.Shorten(req)
 
-	if appError.Message != "unexpected database error" {
+	if err != nil && err.Error() != "could not save to store: unexpected database error" {
 		t.Error("Test failed while testing for unexpected errors")
 	}
 }
@@ -188,7 +187,7 @@ func Test_Expand_should_return_shortened_url_read_from_store_and_save_to_cache(t
 		CreatedAt: "2006-01-02T15:04:05Z07:00",
 	}
 
-	mockCacheRepo.EXPECT().Find("123123123a").Return(nil, errs.NewCacheMissError())
+	mockCacheRepo.EXPECT().Find("123123123a").Return(nil, realDomain.NotFoundError{Err: errors.New("could not find entity in the cache")})
 	mockStoreRepo.EXPECT().Find("123123123a").Return(&a, nil)
 	mockCacheRepo.EXPECT().Save(&a).Return(&a, nil)
 
@@ -217,9 +216,9 @@ func Test_Expand_should_return_shortened_url_read_from_store_with_error_saving_t
 		CreatedAt: "2006-01-02T15:04:05Z07:00",
 	}
 
-	mockCacheRepo.EXPECT().Find("123123123a").Return(nil, errs.NewCacheMissError())
+	mockCacheRepo.EXPECT().Find("123123123a").Return(nil, realDomain.NotFoundError{Err: errors.New("could not find entity in the cache")})
 	mockStoreRepo.EXPECT().Find("123123123a").Return(&a, nil)
-	mockCacheRepo.EXPECT().Save(&a).Return(nil, errs.NewUnexpectedError("unexpected database error"))
+	mockCacheRepo.EXPECT().Save(&a).Return(nil, errors.New("unexpected database error"))
 
 	res, _ := service.Expand("123123123a")
 
@@ -240,12 +239,12 @@ func Test_Expand_should_not_found_shortened_url_and_return_not_found_error(t *te
 	teardown := setupServiceTest(t)
 	defer teardown()
 
-	mockCacheRepo.EXPECT().Find("123123123b").Return(nil, errs.NewCacheMissError())
-	mockStoreRepo.EXPECT().Find("123123123b").Return(nil, errs.NewNotFoundError("incorrect code"))
+	mockCacheRepo.EXPECT().Find("123123123b").Return(nil, realDomain.NotFoundError{Err: errors.New("could not find entity in the cache")})
+	mockStoreRepo.EXPECT().Find("123123123b").Return(nil, realDomain.NotFoundError{Err: errors.New("incorrect code")})
 
 	_, err := service.Expand("123123123b")
 
-	if err.Code != http.StatusNotFound {
-		t.Errorf("Failed when testing for notFound status code")
+	if !errors.As(err, &realDomain.NotFoundError{}) {
+		t.Errorf("Failed when testing for error message: got %v, want could not find entity: incorrect code", err.Error())
 	}
 }

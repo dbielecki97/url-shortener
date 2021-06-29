@@ -1,4 +1,8 @@
+test:
+	go test ./... -v -race
 
+build:
+	go build cmd/server.go
 build-image:
 	go mod tidy
 	go mod vendor
@@ -9,4 +13,4 @@ build-and-deploy:
 	go mod vendor
 	docker-compose up -d
 
-.PHONY: build-and-deploy
+.PHONY: test build

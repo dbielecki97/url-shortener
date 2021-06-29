@@ -3,14 +3,14 @@ package app
 import (
 	"github.com/dbielecki97/url-shortener/internal/api"
 	"github.com/dbielecki97/url-shortener/internal/domain"
-	"github.com/dbielecki97/url-shortener/pkg/errs"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
 //go:generate mockgen -destination=../../mocks/app/mockService.go -package=app github.com/dbielecki97/url-shortener/internal/app Service
 type Service interface {
-	Shorten(api.ShortenRequest) (*api.ShortenInfo, *errs.AppError)
-	Expand(code string) (*api.ShortenInfo, *errs.AppError)
+	Shorten(api.ShortenRequest) (*api.ShortenInfo, error)
+	Expand(code string) (*api.ShortenInfo, error)
 }
 
 type DefaultService struct {
@@ -24,22 +24,22 @@ func NewDefaultService(c domain.ShortUrlRepo, s domain.ShortUrlRepo, log *logrus
 	return &DefaultService{cache: c, store: s, log: log, shortener: st}
 }
 
-func (d DefaultService) Shorten(r api.ShortenRequest) (*api.ShortenInfo, *errs.AppError) {
+func (d DefaultService) Shorten(r api.ShortenRequest) (*api.ShortenInfo, error) {
 	err := r.Validate()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "validation failed")
 	}
 
 	entry := d.shortener.ShortenUrl(r.URL)
 
 	entry, err = d.cache.Save(entry)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not save to cache")
 	}
 
 	entry, err = d.store.Save(entry)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not save to store")
 	}
 
 	res := api.ShortenInfo{
@@ -51,35 +51,40 @@ func (d DefaultService) Shorten(r api.ShortenRequest) (*api.ShortenInfo, *errs.A
 	return &res, nil
 }
 
-func (d DefaultService) Expand(code string) (*api.ShortenInfo, *errs.AppError) {
-	e, err := d.cache.Find(code)
+func IsCacheMiss(err error) bool {
+	return errors.As(err, &domain.NotFoundError{})
+}
+
+func (d DefaultService) Expand(code string) (*api.ShortenInfo, error) {
+	info, err := d.cache.Find(code)
 	if err == nil {
 		res := api.ShortenInfo{
-			Code:      e.Code,
-			URL:       e.URL,
-			CreatedAt: e.CreatedAt,
+			Code:      info.Code,
+			URL:       info.URL,
+			CreatedAt: info.CreatedAt,
 		}
 
 		return &res, nil
 	}
-	if err.Code != errs.CacheMiss {
-		return nil, err
+
+	if !IsCacheMiss(err) {
+		return nil, errors.Wrap(err, "could not find entity")
 	}
 
-	e, err = d.store.Find(code)
+	info, err = d.store.Find(code)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not find entity")
 	}
 
-	_, err = d.cache.Save(e)
+	_, err = d.cache.Save(info)
 	if err != nil {
-		d.log.Errorf("Could not save to cache after reading from store: %v", err)
+		d.log.Errorf("%+v\n", errors.Wrap(err, "could not save entity"))
 	}
 
 	res := api.ShortenInfo{
-		Code:      e.Code,
-		URL:       e.URL,
-		CreatedAt: e.CreatedAt,
+		Code:      info.Code,
+		URL:       info.URL,
+		CreatedAt: info.CreatedAt,
 	}
 
 	return &res, nil

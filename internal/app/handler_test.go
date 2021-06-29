@@ -3,9 +3,10 @@ package app
 import (
 	"encoding/json"
 	"github.com/dbielecki97/url-shortener/internal/api"
+	"github.com/dbielecki97/url-shortener/internal/domain"
 	"github.com/dbielecki97/url-shortener/mocks/app"
-	"github.com/dbielecki97/url-shortener/pkg/errs"
 	"github.com/golang/mock/gomock"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"net/http/httptest"
@@ -87,7 +88,7 @@ func Test_handleUrlShorten_should_shorten_url_and_return_500(t *testing.T) {
 	j, _ := json.Marshal(req)
 	reader := strings.NewReader(string(j))
 
-	mockService.EXPECT().Shorten(req).Return(nil, errs.NewUnexpectedError("unexpected database error"))
+	mockService.EXPECT().Shorten(req).Return(nil, errors.New("could not save to store: unexpected database error"))
 
 	request, _ := http.NewRequest(http.MethodPost, "/", reader)
 	request.Header.Set("Content-Type", "application/json")
@@ -125,7 +126,7 @@ func Test_handleUrlInfo_should_return_400(t *testing.T) {
 	teardown := setupHandlerTest(t)
 	defer teardown()
 
-	mockService.EXPECT().Expand("123123123a").Return(nil, errs.NewNotFoundError("invalid code"))
+	mockService.EXPECT().Expand("123123123a").Return(nil, errors.Wrap(domain.NotFoundError{Err: errors.New("invalid code")}, "could not find entity"))
 
 	request, _ := http.NewRequest(http.MethodGet, "/info/123123123a", nil)
 
@@ -136,10 +137,10 @@ func Test_handleUrlInfo_should_return_400(t *testing.T) {
 		t.Error("Failed while testing the status code")
 	}
 
-	var err errs.AppError
+	var err string
 	_ = json.NewDecoder(recorder.Body).Decode(&err)
 
-	if err.Message != "invalid code" {
+	if !strings.Contains(err, "invalid code") {
 		t.Error("Failed while testing the response body")
 	}
 }
@@ -148,7 +149,7 @@ func Test_handleUrlInfo_should_return_500(t *testing.T) {
 	teardown := setupHandlerTest(t)
 	defer teardown()
 
-	mockService.EXPECT().Expand("123123123a").Return(nil, errs.NewUnexpectedError("unexpected database error"))
+	mockService.EXPECT().Expand("123123123a").Return(nil, errors.New("could not find entity: unexpected database error"))
 
 	request, _ := http.NewRequest(http.MethodGet, "/info/123123123a", nil)
 
@@ -159,10 +160,10 @@ func Test_handleUrlInfo_should_return_500(t *testing.T) {
 		t.Error("Failed while testing the status code")
 	}
 
-	var err errs.AppError
+	var err string
 	_ = json.NewDecoder(recorder.Body).Decode(&err)
 
-	if err.Message != "unexpected database error" {
+	if !strings.Contains(err, "unexpected database error") {
 		t.Error("Failed while testing the response body")
 	}
 }
@@ -171,7 +172,7 @@ func Test_handleUrlExtend_should_return_400(t *testing.T) {
 	teardown := setupHandlerTest(t)
 	defer teardown()
 
-	mockService.EXPECT().Expand("123123123a").Return(nil, errs.NewNotFoundError("invalid code"))
+	mockService.EXPECT().Expand("123123123a").Return(nil, errors.Wrap(domain.NotFoundError{Err: errors.New("invalid code")}, "could not find entity"))
 
 	request, _ := http.NewRequest(http.MethodGet, "/123123123a", nil)
 
@@ -182,10 +183,10 @@ func Test_handleUrlExtend_should_return_400(t *testing.T) {
 		t.Error("Failed while testing the status code")
 	}
 
-	var err errs.AppError
+	var err string
 	_ = json.NewDecoder(recorder.Body).Decode(&err)
 
-	if err.Message != "invalid code" {
+	if !strings.Contains(err, "invalid code") {
 		t.Error("Failed while testing the response body")
 	}
 }
@@ -194,7 +195,7 @@ func Test_handleUrlExtend_should_return_500(t *testing.T) {
 	teardown := setupHandlerTest(t)
 	defer teardown()
 
-	mockService.EXPECT().Expand("123123123a").Return(nil, errs.NewUnexpectedError("unexpected database error"))
+	mockService.EXPECT().Expand("123123123a").Return(nil, errors.New("could not find entity: unexpected database error"))
 
 	request, _ := http.NewRequest(http.MethodGet, "/123123123a", nil)
 
@@ -205,10 +206,10 @@ func Test_handleUrlExtend_should_return_500(t *testing.T) {
 		t.Error("Failed while testing the status code")
 	}
 
-	var err errs.AppError
+	var err string
 	_ = json.NewDecoder(recorder.Body).Decode(&err)
 
-	if err.Message != "unexpected database error" {
+	if !strings.Contains(err, "unexpected database error") {
 		t.Error("Failed while testing the response body")
 	}
 }
