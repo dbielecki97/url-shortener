@@ -36,11 +36,11 @@ func (m *MockShortUrlRepo) EXPECT() *MockShortUrlRepoMockRecorder {
 }
 
 // Find mocks base method.
-func (m *MockShortUrlRepo) Find(arg0 string) (*domain.ShortURL, *errs.AppError) {
+func (m *MockShortUrlRepo) Find(arg0 string) (*domain.ShortURL, errs.RestErr) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Find", arg0)
 	ret0, _ := ret[0].(*domain.ShortURL)
-	ret1, _ := ret[1].(*errs.AppError)
+	ret1, _ := ret[1].(errs.RestErr)
 	return ret0, ret1
 }
 
@@ -51,11 +51,11 @@ func (mr *MockShortUrlRepoMockRecorder) Find(arg0 interface{}) *gomock.Call {
 }
 
 // Save mocks base method.
-func (m *MockShortUrlRepo) Save(arg0 *domain.ShortURL) (*domain.ShortURL, *errs.AppError) {
+func (m *MockShortUrlRepo) Save(arg0 *domain.ShortURL) (*domain.ShortURL, errs.RestErr) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Save", arg0)
 	ret0, _ := ret[0].(*domain.ShortURL)
-	ret1, _ := ret[1].(*errs.AppError)
+	ret1, _ := ret[1].(errs.RestErr)
 	return ret0, ret1
 }
 

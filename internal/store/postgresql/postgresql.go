@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"github.com/dbielecki97/url-shortener/internal/domain"
 	"github.com/dbielecki97/url-shortener/pkg/errs"
+	"github.com/dbielecki97/url-shortener/pkg/logger"
 	"github.com/jmoiron/sqlx"
-	"github.com/sirupsen/logrus"
+	"log"
 	"os"
 )
 
 type Postgresql struct {
-	db  *sqlx.DB
-	log *logrus.Logger
+	db *sqlx.DB
 }
 
-func New(log *logrus.Logger) (*Postgresql, func()) {
+func New() *Postgresql {
 	host := os.Getenv("POSTGRES_HOST")
 
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
@@ -25,31 +25,24 @@ func New(log *logrus.Logger) (*Postgresql, func()) {
 	var db *sqlx.DB
 	var err error
 	if db, err = sqlx.Open("postgres", psqlInfo); err != nil {
-		log.Fatalf("Could not open connection to postgres")
+		logger.Fatal("Could not open connection to postgres", err)
 	}
 
 	err = db.Ping()
 	if err != nil {
-		log.Fatalf("Could not ping Postgresql: %v", err)
-	}
-
-	closeFn := func() {
-		err := db.Close()
-		if err != nil {
-			log.Printf("Could not close Postgresql: %v", err)
-		}
+		logger.Fatal("Could not ping Postgresql: %v", err)
 	}
 
 	log.Println("Connected to Postgresql...")
-	return &Postgresql{db: db, log: log}, closeFn
+	return &Postgresql{db: db}
 }
 
-func (p Postgresql) Save(entry *domain.ShortURL) (*domain.ShortURL, *errs.AppError) {
+func (p Postgresql) Save(entry *domain.ShortURL) (*domain.ShortURL, errs.RestErr) {
 	sqlInsert := "INSERT into urls (code, url, created_at) values ($1,$2,$3)"
 
 	_, err := p.db.Exec(sqlInsert, entry, entry.URL, entry.CreatedAt)
 	if err != nil {
-		p.log.Errorf("Could not save ShortURL to store: %v", err)
+		logger.Error("Could not save ShortURL to client: %v", err)
 		return nil, errs.NewUnexpectedError("unexpected database error")
 	}
 
@@ -60,17 +53,18 @@ func (p Postgresql) Save(entry *domain.ShortURL) (*domain.ShortURL, *errs.AppErr
 	err = row.StructScan(&res)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			p.log.Errorf("Could not find saved ShortURL: %v", err)
+			logger.Error("Could not find saved ShortURL: %v", err)
 			return nil, errs.NewUnexpectedError("unexpected database error")
 		}
-		p.log.Errorf("Could not scan ShortURL: %v", err)
+
+		logger.Error("Could not scan ShortURL: %v", err)
 		return nil, errs.NewUnexpectedError("unexpected database error")
 	}
 
 	return &res, nil
 }
 
-func (p Postgresql) Find(code string) (*domain.ShortURL, *errs.AppError) {
+func (p Postgresql) Find(code string) (*domain.ShortURL, errs.RestErr) {
 	sqlSelect := "SELECT * from urls where code = $1"
 	row := p.db.QueryRowx(sqlSelect, code)
 
@@ -80,7 +74,8 @@ func (p Postgresql) Find(code string) (*domain.ShortURL, *errs.AppError) {
 		if err == sql.ErrNoRows {
 			return nil, errs.NewNotFoundError("incorrect code")
 		}
-		p.log.Errorf("Could not scan ShortURL: %v", err)
+
+		logger.Error("Could not scan ShortURL: %v", err)
 		return nil, errs.NewUnexpectedError("unexpected database error")
 	}
 

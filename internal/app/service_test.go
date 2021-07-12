@@ -6,7 +6,6 @@ import (
 	"github.com/dbielecki97/url-shortener/mocks/domain"
 	"github.com/dbielecki97/url-shortener/pkg/errs"
 	"github.com/golang/mock/gomock"
-	"github.com/sirupsen/logrus"
 	"net/http"
 	"testing"
 )
@@ -31,12 +30,15 @@ func setupServiceTest(t *testing.T) func() {
 	ctrl2 := gomock.NewController(t)
 	mockCacheRepo = domain.NewMockShortUrlRepo(ctrl1)
 	mockStoreRepo = domain.NewMockShortUrlRepo(ctrl2)
-	service = NewDefaultService(mockCacheRepo, mockStoreRepo, logrus.New(), mockShortener{})
+	service = NewDefaultService(mockCacheRepo, mockStoreRepo)
+	tmp := shortener
+	shortener = mockShortener{}
 
 	return func() {
 		service = nil
 		defer ctrl1.Finish()
 		defer ctrl2.Finish()
+		shortener = tmp
 	}
 }
 
@@ -61,7 +63,7 @@ func Test_Shorten_should_receive_error_from_validate_method_not_schema(t *testin
 
 	_, appError := service.Shorten(request)
 
-	if appError.Message != "not a valid url" {
+	if appError.Message() != "not a valid url" {
 		t.Error("failed while testing the new account validation")
 	}
 }
@@ -74,7 +76,7 @@ func Test_Shorten_should_receive_error_from_validate_method_empty_url(t *testing
 
 	_, appError := service.Shorten(request)
 
-	if appError.Message != "url can't be empty" {
+	if appError.Message() != "url can't be empty" {
 		t.Error("failed while testing the new account validation")
 	}
 }
@@ -94,7 +96,7 @@ func Test_Shorten_should_receive_error_from_repository_when_cache_can_not_save_s
 	mockCacheRepo.EXPECT().Save(&a).Return(nil, errs.NewUnexpectedError("unexpected database error"))
 	_, appError := service.Shorten(req)
 
-	if appError.Message != "unexpected database error" {
+	if appError.Message() != "unexpected database error" {
 		t.Error("Test failed while testing for unexpected errors")
 	}
 }
@@ -116,7 +118,7 @@ func Test_Shorten_should_receive_error_from_repository_when_store_can_not_save_s
 
 	_, appError := service.Shorten(req)
 
-	if appError.Message != "unexpected database error" {
+	if appError.Message() != "unexpected database error" {
 		t.Error("Test failed while testing for unexpected errors")
 	}
 }
@@ -188,7 +190,7 @@ func Test_Expand_should_return_shortened_url_read_from_store_and_save_to_cache(t
 		CreatedAt: "2006-01-02T15:04:05Z07:00",
 	}
 
-	mockCacheRepo.EXPECT().Find("123123123a").Return(nil, errs.NewCacheMissError())
+	mockCacheRepo.EXPECT().Find("123123123a").Return(&realDomain.ShortURL{}, nil)
 	mockStoreRepo.EXPECT().Find("123123123a").Return(&a, nil)
 	mockCacheRepo.EXPECT().Save(&a).Return(&a, nil)
 
@@ -217,7 +219,7 @@ func Test_Expand_should_return_shortened_url_read_from_store_with_error_saving_t
 		CreatedAt: "2006-01-02T15:04:05Z07:00",
 	}
 
-	mockCacheRepo.EXPECT().Find("123123123a").Return(nil, errs.NewCacheMissError())
+	mockCacheRepo.EXPECT().Find("123123123a").Return(&realDomain.ShortURL{}, nil)
 	mockStoreRepo.EXPECT().Find("123123123a").Return(&a, nil)
 	mockCacheRepo.EXPECT().Save(&a).Return(nil, errs.NewUnexpectedError("unexpected database error"))
 
@@ -240,12 +242,12 @@ func Test_Expand_should_not_found_shortened_url_and_return_not_found_error(t *te
 	teardown := setupServiceTest(t)
 	defer teardown()
 
-	mockCacheRepo.EXPECT().Find("123123123b").Return(nil, errs.NewCacheMissError())
+	mockCacheRepo.EXPECT().Find("123123123b").Return(&realDomain.ShortURL{}, nil)
 	mockStoreRepo.EXPECT().Find("123123123b").Return(nil, errs.NewNotFoundError("incorrect code"))
 
 	_, err := service.Expand("123123123b")
 
-	if err.Code != http.StatusNotFound {
+	if err.Code() != http.StatusNotFound {
 		t.Errorf("Failed when testing for notFound status code")
 	}
 }

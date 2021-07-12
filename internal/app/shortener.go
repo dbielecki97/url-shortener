@@ -2,12 +2,16 @@ package app
 
 import "github.com/dbielecki97/url-shortener/internal/domain"
 
+var (
+	shortener Shortener = &defaultShortener{}
+)
+
 type Shortener interface {
 	ShortenUrl(url string) *domain.ShortURL
 }
 
-type DefaultShortener struct{}
+type defaultShortener struct{}
 
-func (d DefaultShortener) ShortenUrl(url string) *domain.ShortURL {
+func (d defaultShortener) ShortenUrl(url string) *domain.ShortURL {
 	return domain.NewShortURL(url)
 }

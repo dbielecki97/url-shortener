@@ -13,7 +13,7 @@ func TestShortenRequest_Validate(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
-		want   *errs.AppError
+		want   *errs.Err
 	}{
 		{
 			name:   "Proper URL path with https",

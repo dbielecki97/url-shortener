@@ -1,29 +1,25 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"github.com/dbielecki97/url-shortener/internal/app"
 	"github.com/dbielecki97/url-shortener/internal/store/postgresql"
 	"github.com/dbielecki97/url-shortener/internal/store/redis"
 	"github.com/dbielecki97/url-shortener/pkg/logger"
 	_ "github.com/lib/pq"
-	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"time"
 )
 
 func main() {
-	l := logger.New()
-	l.Infof("Starting email shortener server on port 8000 ...")
+	logger.Info("Starting Url Shortener API server ...")
+	checkEnvVariables()
 
-	sanityCheck(l)
-
-	p, rClose := postgresql.New(l)
-	defer rClose()
-	r, pClose := redis.New(l)
-	defer pClose()
-	ser := app.NewDefaultService(r, p, l, app.DefaultShortener{})
-	s := app.NewServer(l, ser)
+	p := postgresql.New()
+	r := redis.New()
+	s := app.NewServer(app.NewDefaultService(r, p))
 
 	srv := &http.Server{
 		Handler:      s,
@@ -33,31 +29,32 @@ func main() {
 	}
 
 	if err := srv.ListenAndServe(); err != nil {
-		l.Fatalf("Could not start server: %v", err)
+		logger.Fatal("Could not start server: %v", err)
 	}
 }
 
-func sanityCheck(log *logrus.Logger) {
+func checkEnvVariables() {
 	keys := []string{
 		"REDIS_HOST",
 		"POSTGRES_HOST"}
 
 	allPresent := true
 	for _, e := range keys {
-		ok := checkEnvVariable(e, log)
+		ok := checkEnvVariable(e)
 		if allPresent != false {
 			allPresent = ok
 		}
 	}
 
 	if !allPresent {
+		logger.Fatal("exiting application", errors.New("configuration not complete"))
 		os.Exit(1)
 	}
 }
 
-func checkEnvVariable(key string, log *logrus.Logger) bool {
+func checkEnvVariable(key string) bool {
 	if os.Getenv(key) == "" {
-		log.Errorf("Environment variable " + key + " not defined!")
+		logger.Error("environment variable not set", errors.New(fmt.Sprintf("missing %s env variable", key)))
 		return false
 	}
 	return true

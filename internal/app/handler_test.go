@@ -6,7 +6,6 @@ import (
 	"github.com/dbielecki97/url-shortener/mocks/app"
 	"github.com/dbielecki97/url-shortener/pkg/errs"
 	"github.com/golang/mock/gomock"
-	"github.com/sirupsen/logrus"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -20,8 +19,7 @@ var mockService *app.MockService
 func setupHandlerTest(t *testing.T) func() {
 	ctrl := gomock.NewController(t)
 	mockService = app.NewMockService(ctrl)
-	log := logrus.New()
-	server = NewServer(log, mockService)
+	server = NewServer(mockService)
 
 	return func() {
 		defer ctrl.Finish()
@@ -136,10 +134,10 @@ func Test_handleUrlInfo_should_return_400(t *testing.T) {
 		t.Error("Failed while testing the status code")
 	}
 
-	var err errs.AppError
+	var err errs.Err
 	_ = json.NewDecoder(recorder.Body).Decode(&err)
 
-	if err.Message != "invalid code" {
+	if err.Message() != "invalid code" {
 		t.Error("Failed while testing the response body")
 	}
 }
@@ -159,10 +157,10 @@ func Test_handleUrlInfo_should_return_500(t *testing.T) {
 		t.Error("Failed while testing the status code")
 	}
 
-	var err errs.AppError
+	var err errs.Err
 	_ = json.NewDecoder(recorder.Body).Decode(&err)
 
-	if err.Message != "unexpected database error" {
+	if err.Message() != "unexpected database error" {
 		t.Error("Failed while testing the response body")
 	}
 }
@@ -182,10 +180,10 @@ func Test_handleUrlExtend_should_return_400(t *testing.T) {
 		t.Error("Failed while testing the status code")
 	}
 
-	var err errs.AppError
+	var err errs.Err
 	_ = json.NewDecoder(recorder.Body).Decode(&err)
 
-	if err.Message != "invalid code" {
+	if err.Message() != "invalid code" {
 		t.Error("Failed while testing the response body")
 	}
 }
@@ -205,10 +203,10 @@ func Test_handleUrlExtend_should_return_500(t *testing.T) {
 		t.Error("Failed while testing the status code")
 	}
 
-	var err errs.AppError
+	var err errs.Err
 	_ = json.NewDecoder(recorder.Body).Decode(&err)
 
-	if err.Message != "unexpected database error" {
+	if err.Message() != "unexpected database error" {
 		t.Error("Failed while testing the response body")
 	}
 }

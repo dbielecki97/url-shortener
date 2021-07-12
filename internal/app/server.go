@@ -2,18 +2,16 @@ package app
 
 import (
 	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
 	"net/http"
 )
 
 type Server struct {
-	log     *logrus.Logger
 	service Service
 	router  *mux.Router
 }
 
-func NewServer(log *logrus.Logger, service Service) *Server {
-	s := &Server{log: log, service: service}
+func NewServer(service Service) *Server {
+	s := &Server{service: service}
 	s.routes()
 	return s
 }

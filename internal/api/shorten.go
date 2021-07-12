@@ -9,7 +9,7 @@ type ShortenRequest struct {
 	URL string `json:"url,omitempty"`
 }
 
-func (r ShortenRequest) Validate() *errs.AppError {
+func (r ShortenRequest) Validate() *errs.Err {
 	if r.URL == "" {
 		return errs.NewValidationError("url can't be empty")
 	}
